@@ -19,12 +19,7 @@ The journey will support product details, comparison, budget filtering, wishlist
 
 ## Design direction
 
-Three possible styles (tail-probability options):
-- New-wave editorial commerce — 0.07
-- Soft 3D wellness storefront — 0.04
-- Neo-brutalist product lab — 0.08
-
-Chosen: **New-wave editorial commerce**, with clear goal-led hierarchy and warm, confident product imagery.
+The visual direction is **new-wave editorial commerce**, with a clear goal-led hierarchy and warm, confident product imagery.
 
 - **Design Movement:** Contemporary editorial commerce with the compositional restraint of independent lifestyle magazines and the clarity of a modern product studio.
 - **Core Principles:** Keep the user's aspiration more prominent than product taxonomy; use deliberate visual rhythm rather than a wall of cards; make price and selection state immediately legible; keep every shopping action reversible.
@@ -41,4 +36,4 @@ Chosen: **New-wave editorial commerce**, with clear goal-led hierarchy and warm,
 
 ## Frontend and serving
 
-Use React with Vite and plain JavaScript/CSS, matching the requested HTML/CSS/JS/React stack. Keep data fetching in a small `fetch`-based API module and avoid adding an unnecessary backend. Expose the root route and a valid `site-routes.json` before starting the dev server; use the initialized project's configured preview port. The catalog is live sample data; account, cart, wishlist and checkout confirmation are browser-local demo state. Real authentication, payment processing, inventory guarantees, and durable orders are outside the frontend-only Fake Store API prototype and would require an approved backend/payment integration.
+Use React with Vite and plain JavaScript/CSS. Keep data fetching in a small `fetch`-based API module and avoid adding an unnecessary backend. The root route is served by the single-page application, and `site-routes.json` documents the available route. The catalog is live sample data; account, cart, wishlist and checkout confirmation are browser-local demo state. Real authentication, payment processing, inventory guarantees, and durable orders are outside the frontend-only Fake Store API prototype and would require an approved backend/payment integration.
