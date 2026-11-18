@@ -4,7 +4,7 @@
 
 This plan covers the current GoalAI React frontend: goal discovery, Fake Store API catalog loading, USD-to-INR reference conversion, INR-denominated budget filtering, product matching, filters, comparison, wishlist, cart, local demo authentication, demo checkout, navigation, responsive layout, accessibility, and resilience. It does not treat prototype behavior as real commerce. No real accounts, payment capture, message delivery, stock reservation, or durable order processing exist.
 
-**Test targets:** the project Preview and a local development server. Run `pnpm install` once, then `pnpm dev` from the project root. The Vite app uses port `3000`. Confirm `GET /` returns the GoalAI page and `GET /site-routes.json` returns JSON containing the root route.
+**Test targets:** the project Preview and a local development server. Run `npm install` once, then `npm run dev` from the project root. The Vite app uses port `3000`. Confirm `GET /` returns the GoalAI page and `GET /site-routes.json` returns JSON containing the root route.
 
 **Browser coverage:** current Chrome/Edge and Firefox on desktop; Safari/iOS Safari if available; Android Chrome if available. Check desktop at about 1440×900, tablet at 768×1024, and mobile at 390×844 and 320×700. Use a clean browser profile for baseline tests. Repeat persistence tests in the same profile. Clear GoalAI localStorage between clean runs with browser devtools: remove keys `goalai-active-goal`, `goalai-cart`, `goalai-wishlist`, and `goalai-user`.
 
@@ -179,7 +179,7 @@ Record each test as **Pass**, **Fail**, **Blocked**, or **Not run**. For failure
 Run these checks from the project root after code changes:
 
 ```bash
-pnpm build
+npm run build
 curl -fsS http://127.0.0.1:3000/ >/dev/null
 curl -fsS http://127.0.0.1:3000/site-routes.json | python3 -m json.tool
 ```
