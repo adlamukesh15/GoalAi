@@ -2,15 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, CircleHelp, Heart,
   Menu, Minus, Plus, RefreshCw, ShoppingBag, Sparkles, X,
-  Gift, Monitor, Sun, Compass, UserRound, Scale, Trash2,
+  Gift, Monitor, Sun, Compass, UserRound, Scale, Trash2, ClipboardList,
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import GoalSearch from './components/GoalSearch.jsx';
 import ProductCard from './components/ProductCard.jsx';
 import Modals from './components/Modals.jsx';
+import OrdersPage from './components/OrdersPage.jsx';
 import usePersistedState from './hooks/usePersistedState.js';
 import { getCatalog, getUsdInrRate } from './lib/api.js';
 import { formatCategory, GOALS, recommendProducts } from './lib/recommendations.js';
 import { FALLBACK_RATE_DATE, FALLBACK_USD_INR_RATE, formatINR, usdToInr } from './lib/currency.js';
+import { canAdvanceOrderStatus, createDemoOrder, createInitialOrders } from './lib/orders.js';
+import { downloadInvoice } from './lib/invoice.js';
 
 const goalIcons = { sparkles: Sparkles, monitor: Monitor, gift: Gift, sun: Sun };
 const currency = (usdAmount, rate) => formatINR(usdToInr(usdAmount, rate));
@@ -49,6 +53,8 @@ function EmptyState({ icon: Icon = ShoppingBag, title, copy, onClick, action = '
 }
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [catalogStatus, setCatalogStatus] = useState('loading');
@@ -59,7 +65,9 @@ export default function App() {
   const [cart, setCart] = usePersistedState('goalai-cart', []);
   const [wishlist, setWishlist] = usePersistedState('goalai-wishlist', []);
   const [user, setUser] = usePersistedState('goalai-user', null);
-  const [view, setView] = useState('explore');
+  const initialOrders = useMemo(() => createInitialOrders(), []);
+  const [orders, setOrders] = usePersistedState('goalai-orders', initialOrders);
+  const [view, setView] = useState(() => location.pathname === '/orders' ? 'orders' : 'explore');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -98,6 +106,10 @@ export default function App() {
       .catch(() => { /* Keep the dated fallback rate if the reference service is unavailable. */ });
     return () => { active = false; };
   }, []);
+  useEffect(() => {
+    if (location.pathname === '/orders') setView('orders');
+    else setView((current) => current === 'orders' ? 'explore' : current);
+  }, [location.pathname]);
 
   const cartCount = cart.reduce((total, line) => total + line.quantity, 0);
   const cartTotal = cart.reduce((total, line) => total + line.product.price * line.quantity, 0);
@@ -182,8 +194,9 @@ export default function App() {
   };
 
   const placeDemoOrder = (details) => {
-    const reference = `GA-${String(Date.now()).slice(-6)}`;
-    setOrder({ reference, items: cart, total: cartTotal, name: details.name, email: details.email });
+    const placedOrder = createDemoOrder({ cart, total: cartTotal, exchangeRate: exchange.rate, details });
+    setOrder(placedOrder);
+    setOrders((current) => [placedOrder, ...current]);
     setCart([]);
     setCheckoutOpen(false);
     setOrderOpenState(true);
@@ -193,6 +206,8 @@ export default function App() {
 
   const goTo = (nextView) => {
     setView(nextView);
+    if (nextView === 'orders') navigate('/orders');
+    else if (location.pathname === '/orders') navigate('/', { replace: true });
     setMobileNavOpen(false);
     setProfileOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -200,8 +215,43 @@ export default function App() {
 
   const navAnchor = (id) => {
     setView('explore');
+    if (location.pathname === '/orders') navigate('/', { replace: true });
     setMobileNavOpen(false);
     window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }), 50);
+  };
+
+  const updateOrderStatus = (orderId, status) => {
+    const currentOrder = orders.find((item) => item.id === orderId);
+    if (!currentOrder || !canAdvanceOrderStatus(currentOrder.status, status)) return;
+    setOrders((current) => current.map((item) => item.id === orderId && canAdvanceOrderStatus(item.status, status)
+      ? { ...item, status, updatedAt: new Date().toISOString() }
+      : item));
+    notify('Demo tracking status updated');
+  };
+
+  const cancelDemoOrder = (orderId) => {
+    setOrders((current) => current.map((item) => item.id === orderId && item.status === 'processing'
+      ? { ...item, status: 'cancelled', updatedAt: new Date().toISOString() }
+      : item));
+  };
+
+  const reorderOrder = (pastOrder) => {
+    setCart((current) => {
+      const next = [...current];
+      pastOrder.items.forEach(({ product, quantity }) => {
+        const index = next.findIndex((line) => line.product.id === product.id);
+        if (index >= 0) next[index] = { ...next[index], quantity: next[index].quantity + quantity };
+        else next.push({ product, quantity });
+      });
+      return next;
+    });
+    notify('Past order added to your plan');
+    goTo('cart');
+  };
+
+  const downloadOrderInvoice = (pastOrder) => {
+    downloadInvoice(pastOrder);
+    notify('Your demo invoice was downloaded');
   };
 
   const productHandlers = {
@@ -231,7 +281,7 @@ export default function App() {
             {user ? (
               <div className="profile-wrap">
                 <button className="profile-button" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen} aria-label="Open profile menu"><span>{(user.name || user.email || 'G').slice(0, 1).toUpperCase()}</span><ChevronDown size={14} /></button>
-                {profileOpen && <div className="profile-menu"><div className="profile-greeting">Shopping with intention</div><strong>{user.name || user.email}</strong><button onClick={() => goTo('wishlist')}><Heart size={15} /> Saved picks</button><button onClick={() => goTo('cart')}><ShoppingBag size={15} /> Your plan</button><button onClick={() => { setUser(null); setProfileOpen(false); notify('Signed out on this device'); }}><X size={15} /> Sign out</button></div>}
+                {profileOpen && <div className="profile-menu"><div className="profile-greeting">Shopping with intention</div><strong>{user.name || user.email}</strong><button onClick={() => goTo('orders')}><ClipboardList size={15} /> My Orders</button><button onClick={() => goTo('wishlist')}><Heart size={15} /> Saved picks</button><button onClick={() => goTo('cart')}><ShoppingBag size={15} /> Your plan</button><button onClick={() => { setUser(null); setProfileOpen(false); notify('Signed out on this device'); }}><X size={15} /> Sign out</button></div>}
               </div>
             ) : <button className="signin-button" onClick={() => openAuth()}>Sign in <ArrowUpRight size={15} /></button>}
           </div>
@@ -318,6 +368,8 @@ export default function App() {
         </main>
       )}
 
+      {view === 'orders' && <OrdersPage orders={orders} exchangeRate={exchange.rate} onGoExplore={() => goTo('explore')} onStatusChange={updateOrderStatus} onCancelOrder={cancelDemoOrder} onReorder={reorderOrder} onDownloadInvoice={downloadOrderInvoice} notify={notify} />}
+
       {view === 'cart' && (
         <main className="page-main section-wrap">
           <div className="page-kicker"><button className="text-link" onClick={() => goTo('explore')}><ArrowRight className="back-arrow" size={15} /> Back to exploring</button><span>YOUR PLAN / 01</span></div>
@@ -342,7 +394,7 @@ export default function App() {
       {authOpen && <Modals.AuthModal onClose={() => { setAuthOpen(false); setAuthPending(''); }} onSuccess={finishAuth} />}
       {checkoutOpen && <Modals.CheckoutModal cart={cart} total={cartTotal} exchangeRate={exchange.rate} user={user} onClose={() => setCheckoutOpen(false)} onSubmit={placeDemoOrder} />}
       {compareOpen && <Modals.CompareModal products={compared} exchangeRate={exchange.rate} onClose={() => setCompareOpen(false)} onRemove={toggleCompare} />}
-      {orderOpen && order && <Modals.OrderModal order={order} exchangeRate={exchange.rate} onClose={() => { setOrderOpenState(false); setOrder(null); goTo('explore'); }} />}
+      {orderOpen && order && <Modals.OrderModal order={order} exchangeRate={order.exchangeRate} onClose={() => { setOrderOpenState(false); setOrder(null); goTo('explore'); }} />}
       {toast && <div className="toast" role="status"><span><Check size={15} /></span>{toast}</div>}
       <button className="help-button" aria-label="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}><ArrowDown size={17} /></button>
     </div>

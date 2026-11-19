@@ -6,23 +6,36 @@ Build a responsive, frontend-first React storefront that makes shopping goal-led
 
 The journey will support product details, comparison, budget filtering, wishlist toggles, quantity changes, add/remove, cart summary, and an in-app checkout flow. Because this request is for a frontend application and Fake Store API supplies sample catalog data rather than a real payment service, checkout will be a clearly labeled demo flow: it will collect mock checkout details, show an in-app order confirmation, and never redirect to an external store or charge a card. Sign-in/sign-up will be introduced only when the visitor wants to save or checkout; demo session, cart, wishlist, and active goal will persist in localStorage through the auth dialog. This is frontend demo authentication, not a secure production identity service.
 
+## My Orders and tracking extension
+
+The current project has a single-page `view` state and no React Router dependency, so add `react-router-dom` and wrap the existing app in `BrowserRouter` without replacing its current homepage, cart, wishlist, or goal discovery. Keep the same `App` mounted while routing and add a real `/orders` page route so a refresh and browser back/forward preserve the My Orders destination. Add My Orders to the signed-in profile menu and keep the existing navigation visual language.
+
+Persist seeded frontend mock orders and every created/updated order in `goalai-orders` using the existing `usePersistedState` hook. A completed demo checkout will create a unique order record with buyer/shipping details, items and quantities, USD source prices, an INR exchange-rate snapshot, totals, a dated expected delivery estimate, and an initial Processing status before clearing the cart. Order status changes update the saved record and derived summary counts; `out_for_delivery` is included in the Shipped filter/count.
+
+Create a reusable `OrdersPage` with the requested status summary, filter/search, order cards, empty state, expandable/viewable details, five-step status timeline, a demo status selector, eligible-order cancellation confirmation, cart-backed reorder, and a generated printable HTML invoice download. Keep all order operations local to the browser: no backend, database, payment processor, authentication server, or real order fulfillment is introduced. New styles reuse the existing warm ivory/evergreen/chartreuse GoalAI tokens and responsive layout.
+
 ## Project structure
 
-- `src/main.jsx`: React application bootstrap.
-- `src/App.jsx`: application shell, navigation, goal discovery and route-like view state.
-- `src/components/`: reusable navigation, search suggestions, goal cards, product cards/detail, compare tray, cart, wishlist, auth and checkout dialogs.
-- `src/hooks/`: catalog data loading and local persistence hooks.
-- `src/lib/`: Fake Store API and exchange-rate clients, INR formatting/conversion, product normalization and goal-to-product matching helpers.
+- `src/main.jsx`: React application bootstrap and `BrowserRouter` provider.
+- `src/App.jsx`: application shell, navigation, goal discovery, existing local views, and `/orders` route integration.
+- `src/components/`: reusable navigation, search suggestions, goal cards, product cards/detail, compare tray, cart, wishlist, auth/checkout dialogs, and the My Orders dashboard.
+- `src/hooks/`: catalog data loading and local persistence hooks, including persisted order state.
+- `src/lib/`: Fake Store API and exchange-rate clients, INR conversion, goal matching, seeded mock orders, and invoice generation.
 - `src/styles/`: global tokens, responsive layout and component styles.
-- `public/site-routes.json`: static route manifest for the single-page `/` application.
+- `public/manus-routes.json`: static route manifest for `/` and `/orders`.
 - `index.html`, `package.json`, and `vite.config.js`: React/Vite entry and scripts.
 
 ## Design direction
 
-The visual direction is **new-wave editorial commerce**, with a clear goal-led hierarchy and warm, confident product imagery.
+Three possible styles (tail-probability options):
+- New-wave editorial commerce — 0.07
+- Soft 3D wellness storefront — 0.04
+- Neo-brutalist product lab — 0.08
+
+Chosen: **New-wave editorial commerce**, with clear goal-led hierarchy and warm, confident product imagery.
 
 - **Design Movement:** Contemporary editorial commerce with the compositional restraint of independent lifestyle magazines and the clarity of a modern product studio.
-- **Core Principles:** Keep the user's aspiration more prominent than product taxonomy; use deliberate visual rhythm rather than a wall of cards; make price and selection state immediately legible; keep every shopping action reversible.
+- **Core Principles:** Keep the user's aspiration more prominent than product taxonomy; use deliberate visual rhythm rather than a wall of cards; make price and selection state immediately legible; keep shopping actions reversible; simulate order tracking forward only, with Delivered terminal so completed orders cannot return to cancellation eligibility.
 - **Color Philosophy:** Warm ivory and deep evergreen provide a calm canvas, while bright chartreuse marks active goals and high-confidence actions. Muted lavender and pale peach distinguish supporting categories without competing with the products.
 - **Layout Paradigm:** Asymmetric magazine-like composition: a broad left-aligned goal search and editorial hero, a horizontal set of goal paths, then a staggered catalog with a persistent compare/cart rail on wide screens. Collapse into a single scrolling column with a compact mobile navigation on narrow screens.
 - **Signature Elements:** A chartreuse goal-orbit motif around the search affordance; numbered goal cards with an oversized step numeral; small rounded recommendation badges that explain why a product fits.
@@ -36,4 +49,4 @@ The visual direction is **new-wave editorial commerce**, with a clear goal-led h
 
 ## Frontend and serving
 
-Use React with Vite and plain JavaScript/CSS. Keep data fetching in a small `fetch`-based API module and avoid adding an unnecessary backend. The root route is served by the single-page application, and `site-routes.json` documents the available route. The catalog is live sample data; account, cart, wishlist and checkout confirmation are browser-local demo state. Real authentication, payment processing, inventory guarantees, and durable orders are outside the frontend-only Fake Store API prototype and would require an approved backend/payment integration.
+Use React with Vite, React Router, and plain JavaScript/CSS, matching the requested HTML/CSS/JS/React stack. Keep data fetching in the existing `fetch`-based API module and avoid adding a backend. Expose the root and My Orders routes in a valid `manus-routes.json`; use the initialized project's configured preview port. The catalog is live sample data; account, cart, wishlist, and order history persist only in this browser for demo purposes. Real authentication, payment processing, inventory guarantees, and cross-device/durable server orders remain outside this frontend-only prototype and would require an approved backend/payment integration.

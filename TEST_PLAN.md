@@ -4,7 +4,7 @@
 
 This plan covers the current GoalAI React frontend: goal discovery, Fake Store API catalog loading, USD-to-INR reference conversion, INR-denominated budget filtering, product matching, filters, comparison, wishlist, cart, local demo authentication, demo checkout, navigation, responsive layout, accessibility, and resilience. It does not treat prototype behavior as real commerce. No real accounts, payment capture, message delivery, stock reservation, or durable order processing exist.
 
-**Test targets:** the deployed site and a local development server. Run `npm install` once, then `npm run dev` from the project root. The app uses port `3000`. Confirm `GET /` returns the GoalAI page and `GET /site-routes.json` returns JSON containing the root route.
+**Test targets:** the project Preview and a local development server. Run `pnpm install` once, then `pnpm dev` from the project root. The Vite app uses port `3000`. Confirm `GET /` returns the GoalAI page and `GET /manus-routes.json` returns JSON containing the root route.
 
 **Browser coverage:** current Chrome/Edge and Firefox on desktop; Safari/iOS Safari if available; Android Chrome if available. Check desktop at about 1440×900, tablet at 768×1024, and mobile at 390×844 and 320×700. Use a clean browser profile for baseline tests. Repeat persistence tests in the same profile. Clear GoalAI localStorage between clean runs with browser devtools: remove keys `goalai-active-goal`, `goalai-cart`, `goalai-wishlist`, and `goalai-user`.
 
@@ -25,7 +25,7 @@ Record each test as **Pass**, **Fail**, **Blocked**, or **Not run**. For failure
 | ID | Priority | Test | Steps | Expected result |
 |---|---|---|---|---|
 | START-01 | P0 | Open home route | Open `/`. | GoalAI loads with no blank screen or uncaught runtime error. The page title identifies GoalAI. |
-| START-02 | P1 | Static route declaration | Request `/site-routes.json`. | HTTP 200; valid JSON; routes includes `/` and a GoalAI title. It is JSON, not SPA fallback HTML. |
+| START-02 | P1 | Static route declaration | Request `/manus-routes.json`. | HTTP 200; valid JSON; routes includes `/` and a GoalAI title. It is JSON, not SPA fallback HTML. |
 | API-01 | P0 | Load product catalog | Open Explore with network online. | Loading state appears briefly, then products render with title, price, category, image, and available rating. |
 | API-02 | P1 | Load categories | Inspect category chips after catalog load. | Category chips derive from the API response; each category filters the displayed product set. |
 | API-03 | P1 | Product data fidelity | Compare one product card and details modal to `/products/{id}`. | Title, category, image, description, and rating correspond to the returned API product. The USD API price is converted and displayed in INR using the rate/date shown in the app. |
@@ -120,13 +120,34 @@ Record each test as **Pass**, **Fail**, **Blocked**, or **Not run**. For failure
 | CHECK-01 | P0 | Checkout authentication gate | With items in cart while signed out, select Continue to checkout. | Auth modal opens; cart and goal stay intact. |
 | CHECK-02 | P0 | Checkout fields | Complete demo name, email, and delivery address. | Required fields validate; no card number or payment credential is requested. |
 | CHECK-03 | P0 | In-app checkout | Submit a valid demo order. | Confirmation displays within GoalAI without redirecting to an external store. |
-| CHECK-04 | P0 | Explicitly non-payment | Submit demo checkout and inspect Network panel. | No payment provider request or charge is initiated. UI states no real order/payment occurred. |
-| CHECK-05 | P1 | Order summary accuracy | Submit a cart with multiple products/quantities. | Demo receipt itemization and total equal cart values at checkout. |
-| CHECK-06 | P1 | Cart after confirmation | Complete demo checkout and return to Explore. | Cart is cleared only after demo confirmation; goal/wishlist/user remain. |
+| CHECK-04 | P0 | Explicitly non-payment | Submit demo checkout and inspect Network panel. | No payment provider request or charge is initiated. The UI states no real order/payment occurred; only a browser-local demo order record is created. |
+| CHECK-05 | P1 | Order summary accuracy | Submit a cart with multiple products/quantities. | Demo receipt and new My Orders record preserve itemization, quantities, checkout totals, buyer/address, and exchange-rate snapshot. |
+| CHECK-06 | P1 | Cart after confirmation | Complete demo checkout and return to Explore. | Cart is cleared only after demo confirmation; the new order appears in My Orders; goal/wishlist/user remain. |
 | CHECK-07 | P1 | Cancel checkout | Close checkout without submitting. | Cart and goal remain intact; no order confirmation appears. |
 | CHECK-08 | P2 | Empty cart guard | Try to open/submit checkout with an empty cart. | Purchase action is unavailable or blocked; no empty order is created. |
 
-### H. Navigation, About, Contact, and mobile menu
+### H. My Orders dashboard, tracking, and actions
+
+| ID | Priority | Test | Steps | Expected result |
+|---|---|---|---|---|
+| ORD-01 | P0 | Profile link and direct route | Sign in with clearly fake demo details; open the profile menu and select My Orders. Separately open `/orders` directly and refresh. | My Orders opens at `/orders` and remains available after refresh. Existing Explore/cart/wishlist navigation still works. |
+| ORD-02 | P1 | Summary counts | Open seeded orders; compare Total Orders, Processing, Shipped, Delivered, and Cancelled with visible order states. | Counts are correct; Out for Delivery contributes to Shipped. |
+| ORD-03 | P1 | Order-card fields | Inspect cards with one and multiple products. | Each card shows ID, placed date, image, product name, quantity, INR product/line prices, status, total, and expected delivery date. |
+| ORD-04 | P1 | Status filters | Select All Orders, Processing, Shipped, Delivered, and Cancelled. Include an Out for Delivery order. | Each filter shows only matching orders; Out for Delivery is included under Shipped; summary counts do not change just because a filter is active. |
+| ORD-05 | P1 | Search by ID and product | Search using a full/partial order ID and a product name; combine search with a status filter. | Search is case-insensitive, returns matching order cards, combines with the selected filter, and shows a no-match message when appropriate. |
+| ORD-06 | P1 | Order detail information | Open View Details for orders with multiple products. | Details show products, images, quantities, unit prices, line amounts, shipping address, simulated payment method, order total, and expected delivery date. |
+| ORD-07 | P1 | Tracking timeline | Open orders in Processing, Shipped, Out for Delivery, Delivered, and Cancelled states. | Five stages (Order Placed, Processing, Shipped, Out for Delivery, Delivered) distinguish completed, current, pending, or cancelled states correctly. |
+| ORD-08 | P1 | Simulated status changes | In order details, change a Processing order through Shipped, Out for Delivery, and Delivered. Return to the list and inspect filters/cards. | Status can only move forward; each valid change updates the timeline, card, filter membership, success feedback, and summary counts immediately; state survives refresh; Delivered is terminal. |
+| ORD-09 | P0 | Eligible cancellation confirmation | From a Processing order, select Cancel order, choose Keep order, then repeat and confirm. | First dialog dismissal changes nothing; confirmation marks only the eligible order cancelled and immediately updates card, filter, timeline, and summary. |
+| ORD-10 | P1 | Cancellation guard | Inspect Shipped, Out for Delivery, Delivered, and already Cancelled orders. Try to change a Delivered order back to Processing through the simulator, then attempt cancellation. | Delivered status cannot be changed backwards; Delivered/shipped/cancelled orders cannot be cancelled; only eligible Processing orders expose the cancellation action. |
+| ORD-11 | P1 | Reorder from history | Reorder a past multi-item order when cart is empty, then reorder an item already in cart. | Existing cart receives the previous products and quantities; matching product IDs merge quantities; app opens the existing cart and retains its current checkout flow. |
+| ORD-12 | P1 | Download invoice | Download from both the card and detail view; open the saved HTML file. | A browser-generated invoice contains order ID/date, customer/address, product names, quantities, INR unit/line/total values, status, and explicit demo/no-payment disclosure. No invoice service request occurs. |
+| ORD-13 | P1 | Seeded data and empty state | Clear the `goalai-orders` demo key in a test browser; open My Orders. Also remove it and verify before seeding if needed. | Initial JavaScript mock orders render with representative statuses; if the list is empty, the no-orders state offers a route back to Explore. |
+| ORD-14 | P0 | Checkout creates unique order | Complete two separate demo checkouts using fake test details. | Each completed checkout creates a unique Processing order with all products/quantities, totals, buyer/shipping data, and expected delivery date; cart clears only after confirmation. |
+| ORD-15 | P1 | Local persistence | Refresh after creating an order and after changing its status. Inspect localStorage. | Orders and status changes remain in browser-local `goalai-orders`; they are not represented as server-side or real purchases. |
+| ORD-16 | P1 | Responsive My Orders | Test list, details, filters/search, and cancellation dialog at 1440, 1024, 768, 390, and 320px widths. | No page-level horizontal overflow; order cards, detail panels, filter strip, actions, and dialog remain visible and usable. |
+
+### I. Navigation, About, Contact, and mobile menu
 
 | ID | Priority | Test | Steps | Expected result |
 |---|---|---|---|---|
@@ -139,7 +160,7 @@ Record each test as **Pass**, **Fail**, **Blocked**, or **Not run**. For failure
 | CONTACT-01 | P1 | Contact prototype disclosure | Submit valid contact email and note. | UI explicitly says no message was sent; it does not claim the team received a message. No network request is made. |
 | CONTACT-02 | P2 | Contact required validation | Submit with required email/note missing or invalid. | Native form validation blocks submission. |
 
-### I. Responsive layout and visual quality
+### J. Responsive layout and visual quality
 
 | ID | Priority | Test | Steps | Expected result |
 |---|---|---|---|---|
@@ -151,7 +172,7 @@ Record each test as **Pass**, **Fail**, **Blocked**, or **Not run**. For failure
 | RWD-06 | P2 | Long titles/descriptions | Use products with long title/description. | Text wraps/clamps without overlap; product actions remain accessible. |
 | RWD-07 | P2 | Reduced motion | Enable OS/browser `prefers-reduced-motion: reduce`. | Decorative motion is suppressed or reduced; no functionality depends on animation. |
 
-### J. Accessibility and input behavior
+### K. Accessibility and input behavior
 
 | ID | Priority | Test | Steps | Expected result |
 |---|---|---|---|---|
@@ -163,7 +184,7 @@ Record each test as **Pass**, **Fail**, **Blocked**, or **Not run**. For failure
 | A11Y-06 | P2 | Color contrast | Check body copy, labels, and controls with a contrast checker. | Text remains legible against backgrounds; report any failing small-text contrasts. |
 | A11Y-07 | P2 | Screen-reader status updates | Add item, save wishlist item, and submit demo form. | Status messages are announced, not only shown visually. |
 
-### K. Security, privacy, and prototype truthfulness
+### L. Security, privacy, and prototype truthfulness
 
 | ID | Priority | Test | Steps | Expected result |
 |---|---|---|---|---|
@@ -172,16 +193,17 @@ Record each test as **Pass**, **Fail**, **Blocked**, or **Not run**. For failure
 | SEC-03 | P0 | No external commerce redirect | Click Buy now and complete demo checkout. | Entire flow remains in GoalAI; no navigation to external shops. |
 | SEC-04 | P1 | No user data transmission | Submit demo auth/contact forms and inspect Network panel. | Credentials/contact text remain in local demo state; no endpoint receives them. |
 | SEC-05 | P1 | UI claims match behavior | Review sign-in, contact, order confirmation, and price labels. | Demo account/order/message limits are explicit; no live account, payment, order, or message is falsely claimed. |
-| SEC-06 | P2 | Stored data visibility | Inspect localStorage. | Only demo user profile, goal, cart, and wishlist are stored; users are not told this is secure server-side storage. |
+| SEC-06 | P2 | Stored data visibility | Inspect localStorage. | Only demo user profile, goal, cart, wishlist, and frontend order history are stored; users are not told this is secure server-side storage. |
 
 ## 4. Automated checks
 
 Run these checks from the project root after code changes:
 
 ```bash
-npm run build
+pnpm build
 curl -fsS http://127.0.0.1:3000/ >/dev/null
-curl -fsS http://127.0.0.1:3000/site-routes.json | python3 -m json.tool
+curl -fsS http://127.0.0.1:3000/orders >/dev/null
+curl -fsS http://127.0.0.1:3000/manus-routes.json | python3 -m json.tool
 ```
 
 The API and recommendation smoke check can be run from the project root with Node:
@@ -201,10 +223,38 @@ console.log(`Passed: ${products.length} products loaded and goal search returns 
 JS
 ```
 
+Order-state and invoice-generation smoke checks can be run locally without browser automation:
+
+```bash
+node --input-type=module <<'JS'
+import assert from 'node:assert/strict';
+import { canAdvanceOrderStatus, createDemoOrder, createInitialOrders, createOrderId, filterOrders, getForwardOrderStatuses, getOrderSummary, getTrackingIndex } from './src/lib/orders.js';
+import { createInvoiceHtml } from './src/lib/invoice.js';
+const orders = createInitialOrders();
+assert.equal(orders.length, 4);
+assert.deepEqual(getOrderSummary(orders), { totalOrders: 4, processing: 1, shipped: 1, delivered: 1, cancelled: 1 });
+assert.equal(filterOrders(orders, 'shipped').length, 1);
+assert.equal(filterOrders(orders, 'all', 'backpack').length, 1);
+assert.equal(getTrackingIndex('out_for_delivery'), 3);
+assert.equal(canAdvanceOrderStatus('processing', 'shipped'), true);
+assert.equal(canAdvanceOrderStatus('shipped', 'processing'), false);
+assert.equal(canAdvanceOrderStatus('delivered', 'processing'), false);
+assert.deepEqual(getForwardOrderStatuses('delivered'), []);
+const details = { name: 'Demo User', email: 'demo@example.test', address: '1 Test Street' };
+const sample = createDemoOrder({ cart: orders[0].items, total: orders[0].total, exchangeRate: 94.03, details });
+assert.equal(sample.status, 'processing');
+assert.notEqual(createOrderId(), createOrderId());
+const invoice = createInvoiceHtml(sample);
+assert.ok(invoice.includes(sample.id) && invoice.includes('Fjallraven') && invoice.includes('₹'));
+assert.ok(invoice.toLowerCase().includes('no payment was taken'));
+console.log('Passed: seeded orders, summaries/filters, tracking, unique order IDs, checkout order and invoice HTML.');
+JS
+```
+
 ## 5. Suggested execution order
 
 1. Run START and API cases first; a broken API or page load blocks meaningful shopping tests.
-2. Run GOAL, DISC, WISH, and CART cases to cover the user’s primary discovery-to-selection flow.
+2. Run GOAL, DISC, WISH, CART, and ORD cases to cover goal discovery, selection, and order history.
 3. Run AUTH and CHECK cases only with clearly fake test information; never enter real credentials or payment details.
 4. Run navigation, responsive, and accessibility cases at every target viewport/browser.
 5. Run privacy and prototype-truthfulness checks before sharing the demo.
@@ -212,4 +262,4 @@ JS
 
 ## 6. Known boundaries and likely follow-up tests
 
-Goal matching is a local keyword/category heuristic rather than a connected LLM. Test it as an interactive recommendation prototype, not an open-ended language-understanding service. Fake Store API is sample catalog data and may be unavailable or change. Sign-in is browser-local demo state; it is not secure authentication or cross-device identity. Checkout is a confirmation simulation without payment processing or durable order creation. The contact form does not transmit messages. A production release needs separately implemented and reviewed backend authentication, payment processing, order persistence, inventory/shipping rules, and a real contact delivery path.
+Goal matching is a local keyword/category heuristic rather than a connected LLM. Test it as an interactive recommendation prototype, not an open-ended language-understanding service. Fake Store API is sample catalog data and may be unavailable or change. Sign-in and order history are browser-local demo state; they are not secure authentication, real purchases, fulfillment, or cross-device/durable server records. Checkout creates a local mock order only and never collects payment credentials. The downloaded HTML invoice is a demonstration document, not a tax invoice or proof of payment. The contact form does not transmit messages. A production release needs separately implemented and reviewed backend authentication, payment processing, durable order persistence, inventory/shipping rules, and a real contact delivery path.

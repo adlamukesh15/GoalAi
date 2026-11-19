@@ -49,6 +49,29 @@
 - Checkout and order confirmation stay within GoalAI. Because this frontend is connected to a sample product API only, the demo must not represent a real payment or durable order as completed.
 - The in-app demo checkout collects sample delivery details, displays a demo order confirmation, and does not collect card details or charge a payment method. A real payment provider and durable order service remain unconnected.
 
+## My Orders navigation and dashboard — Complete
+- Add My Orders to the existing signed-in user profile dropdown and create a dedicated My Orders page using a React Router `/orders` route while maintaining the existing navigation design.
+- Show Order Summary counts for Total Orders, Processing, Shipped, Delivered, and Cancelled. Recalculate the counts whenever order statuses change; include Out for Delivery in the Shipped count and filter.
+- Each order card displays Order ID, order date, product image, product name, quantity, product price, total amount, order status, and expected delivery date.
+- Provide All Orders, Processing, Shipped, Delivered, and Cancelled filters, plus search by order ID or product name.
+- Follow the existing GoalAI design system and current typography, colors, spacing, and visual identity. Keep the dashboard premium, minimal, modern, and responsive; include an appropriate no-orders empty state and success/loading feedback where appropriate; avoid generic e-commerce dashboard styling.
+- Do not change the existing homepage, AI search, goal-based product discovery, cart, checkout, navigation design, or existing interactions.
+
+## Order details and interactive tracking — Complete
+- Clicking View Details displays order information, purchased products, product quantities and prices, mock shipping address, simulated payment method, order total, and an order tracking timeline.
+- The visual timeline has Order Placed, Processing, Shipped, Out for Delivery, and Delivered stages, styled distinctly as completed, current, or pending.
+- Allow users to simulate order status changes with a simple demo interaction, progressing status forward only; Delivered is final and cannot be rolled back to a cancellation-eligible state. Reflect each valid change immediately in the timeline, status filters, order card, and summary counts.
+
+## Order cancellation, reorder, and invoice — Complete
+- Allow cancellation of eligible orders, show a confirmation dialog, and update order status immediately; prevent cancellation of delivered orders.
+- Reorder adds previously purchased products and quantities to the existing shopping cart, reusing the current cart functionality.
+- Download Invoice generates a simple downloadable invoice containing order and product details entirely on the frontend.
+
+## Frontend order data and checkout persistence — Complete
+- Use JavaScript mock data to populate initial orders. Manage order states with React state and effects where appropriate; persist orders in localStorage.
+- Automatically generate a mock order after the existing checkout process completes, generate unique order IDs, and preserve all order information after the browser is refreshed.
+- Do not introduce backend APIs, databases, authentication servers, or payment gateway integrations. Orders and simulated payment/tracking data are frontend-only demo information.
+
 ## Responsive navigation and information pages — Partially implemented
 - The responsive navigation bar provides Explore to discover different goals, categories, and recommended products; About to learn about GoalAI and its purpose; Sign In for new and existing users to access their accounts; a profile icon for the logged-in user's account-related options; Cart to view and manage selected products before checkout; Wishlist to save favourite products for future purchases; and Contact with information and options for contacting the GoalAI team.
 - Before login, display Sign In. After successful login, replace it with the user's profile icon and provide access to account-related features.
